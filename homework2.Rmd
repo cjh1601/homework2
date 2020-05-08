@@ -1,0 +1,100 @@
+---
+title: "Homework 2: Data visualization"
+author: "your name"
+date: "due 11:59pm 6/02/2020"
+output: bookdown::html_document2
+---
+
+# Learning Objectives
+
+1.	Write a few sentences for a journal methods section describing the data and the analysis you are going to perform  
+2.	Perform 2 different dimension reduction techniques      
+3. Create a figure to show the results from each dimension reduction method you performed  
+4. Describe the information conveyed by the figures  
+
+
+**Assignment**: You will perform at least two of the statistical analysis methods we learned in class on a new data set and interpret the results. 
+
+Steps to follow:
+
+1. Run the code hw2-format-data.Rmd in the class folder to download the homework data from the GEO website to an R object in your data folder.
+2. QC the data in the R object provided. Are the expression data and annotation data identically sorted? Are there missing data? Patient samples are measured at how many time points?  
+3. Write a brief introduction to describe the data in your analysis, and the methods you will apply for dimension reduction. Describe any other data manipulation you will perform.  
+4. Perform dimension reduction technique and display the results in a figure. Write a figure caption describing the analysis method and data.  Describe any patterns the figure shows.  
+5. Perform a different dimension reduction technique and report the results.
+6. Verify that your report is reproducible or modify your code so that it is reproducible.  
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r loadlibraries}
+library(bookdown)
+library(matrixStats)
+library(limma)
+library(Rtsne)
+library(ggplot2)
+```
+
+
+# Load the human alveolar epithelial cell dataset
+
+These data are from Marconett et al. Integrated transcriptomic and epigenomic analysis of primary human lung cell differentiation. PLoS Genet 2013. PMC3688557. 
+
+GEO assession: GSE38571
+
+Data set: 17 Illumina HT12v4 arrays
+
+2 Experimental Factors:
+
+		5 Time points: D0, D2, D4, D6, D8	   (day)
+		
+		3 lung donors: 49, 61, 66		         (age) 
+
+
+```{r aecdata}
+   load("../data/aec.rda")
+```
+
+Summarize the data. 
+
+```{r structure}
+names(aec)
+```
+
+
+```{r }
+
+```
+
+Write a few sentences summarizing the data set here, and the methods you are going to apply to the data.
+
+# Data Visualization
+
+## Method 1:
+
+
+
+```{r ,fig.cap=''}
+
+
+```
+
+
+## Method 2:
+
+
+
+```{r ,fig.cap=}
+
+```
+
+
+
+# Report computing environment
+
+Now output the computing environment listing the different software versions installed on your computer.
+
+```{r sessioninfo}
+  sessionInfo()
+```
