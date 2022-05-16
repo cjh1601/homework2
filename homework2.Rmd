@@ -1,7 +1,7 @@
 ---
 title: "Homework 2: Data visualization"
 author: "your name"
-date: "due 11:59pm 6/02/2020"
+date: "due 11:59pm 5/31/2022"
 output: html_document
 ---
 
