@@ -1,6 +1,6 @@
 ---
 title: "Homework 2: Data visualization"
-author: "your name"
+author: "Cassidy Hernandez-Tamayo"
 date: "due 11:59pm 5/30/2023"
 output: html_document
 ---
@@ -29,6 +29,11 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ```{r loadlibraries}
+#install.packages("bookdown")
+#install.packages("matrixStats")
+#install.packages("limma")
+#install.packages("Rtsne")
+#install.packages("ggplot2")
 library(bookdown)
 library(matrixStats)
 library(limma)
@@ -53,43 +58,146 @@ Data set: 17 Illumina HT12v4 arrays
 
 
 ```{r aecdata}
-   load("../data/aec.rda")
+   load("~/homework2/data/aec.rda")
 ```
 
 Summarize the data. 
 
 ```{r structure}
+#what are the names of the objects in this data set (list)
 names(aec)
+names(aec$targets)
 ```
 
 
 ```{r }
-
+dim(aec$E)
+head(aec$E[,1:3])
+head(aec$targets)
+#how many replicates are there of each experimental condition?
+with(aec$targets,table(age,day))
+identical(rownames(aec$targets),colnames(aec$E))
+boxplot(aec$E)
+df <- cbind.data.frame(ilmnid = rownames(aec$E[1:9,]),
+                       aec$E[1:9,])
+data_long <- tidyr::gather(df, gsm, value, colnames(aec$E[1:9,]), factor_key=TRUE)
+pl <- ggplot(data_long, aes(value))
+pl + geom_density(aes(fill=factor(ilmnid))) + facet_wrap(~ilmnid) +
+  labs(title="Density plot",
+       x="log2(exprs)",
+       fill="ilmnid")
+mn_e  <- rowMeans(aec$E)
+mad_e <- matrixStats::rowMads(aec$E)
+par(mfrow=c(1,3))
+hist(mn_e)
+hist(mad_e)
+hist(log(mad_e))
+plot(mn_e,mad_e, pch=".")
+smoothScatter(mn_e,mad_e)
 ```
 
 Write a few sentences summarizing the data set here, and the methods you are going to apply to the data.
 
+Our data consist of 17 Illumina HT gene expression arrays from a 5x3 factorial design downloaded from Gene Expression Omnibus. Gene expressions were measured at days 0, 2, 4, 6, and 8 during ages 49, 61, and 66. A large fraction of genes on the array are not expressed, as shown by the plot of mean values. There is a right skewed distribution of variability, and on the log2 scale, the variability is independent of the mean.
+
 # Data Visualization
 
-## Method 1:
-
-
-
-```{r }
-
-
-```
-
-
-## Method 2:
-
-
+## Method 1: tSNE
+t-distributed stochastic neighbor embedding (tSNE) is a flexible dimension reduction technique that uses pairwise similarities to visualize the local structure between neighboring observations within the lower dimensional space. We set a seed of 48 for reproducible results and set the perplexity to 5. Moreover, we set a different seed of 45 and different perplexities of 3 and 4 to check the robustness of our results. The results showed that lower perplexity values demonstrated more local structure.
 
 ```{r }
+tE <- t(aec$E)
+sdztE <- scale(tE,center=TRUE,scale=
+                 matrixStats::colMads(tE))
+fmad  <- matrixStats::rowMads(aec$E)
+rfmad <- rank(-fmad)
+fidx <- which(rfmad <= 500)
+my.pca <- prcomp(sdztE[,fidx],retx=TRUE)
+dfx <- as.data.frame(my.pca$x)
+my.pca <- prcomp(sdztE,retx=TRUE)
+dfx <- as.data.frame(my.pca$x)
 
+set.seed(48)
+tsne_out <- Rtsne::Rtsne(sdztE[,fidx],perplexity=5,theta=0.0) 
+dfy <- as.data.frame(tsne_out$Y)
+ggplot(dfy,  aes(x=V1, y=V2, color = aec$targets$age )) + geom_point(size=2.5) +
+  theme(text = element_text(size=14)) +
+   labs(color="Age")
+set.seed(45)
+tsne_out <- Rtsne::Rtsne(sdztE[,fidx],perplexity=5,theta=0.0) 
+dfy <- as.data.frame(tsne_out$Y)
+ggplot(dfy,  aes(x=V1, y=V2, color = aec$targets$age )) + geom_point(size=2.5) +
+  theme(text = element_text(size=14)) +
+  labs(color="Age")
+set.seed(45)
+tsne_out1 <- Rtsne::Rtsne(sdztE[,fidx],perplexity=4,theta=0.0) 
+tsne_out1 <- cbind.data.frame(tsne_out1$Y, perplex="Perplexity = 4")
+set.seed(45)
+tsne_out2 <- Rtsne::Rtsne(sdztE[,fidx],perplexity=3,theta=0.0) 
+tsne_out2 <- cbind.data.frame(tsne_out2$Y, perplex="Perplexity = 3")
+dfy <- rbind.data.frame(rbind(tsne_out1,tsne_out2))
+colnames(dfy) <- c("V1","V2","perplex")
+ggplot(dfy, aes(x=V1, y=V2, 
+      color = c(aec$targets$age,aec$targets$age) ) ) + 
+        geom_point() + 
+        facet_wrap(~ perplex, ncol = 2, scales = "free") +
+        theme(legend.position = "bottom") +
+        theme(text = element_text(size=14)) +
+        labs(color="Age") +
+        ggtitle("tSNE")
 ```
 
+## Method 2: UMAP
+Uniform manifold approximation and projection (UMAP) is a non-linear dimension reduction technique that visualizes neighbors locally within a two dimensional space. We set the number of neighbors to the original perplexity from the tSNE method and checked the robustness of our results by setting a different starting seed and neighborhood sizes. The smaller number of neighborhoods demonstrated more structure, and using different seeds yielded different relative positions, demonstrating that the groups' relative positions are not interpretable.
 
+```{r }
+set.seed(4987)
+umap_out <- uwot::umap(sdztE[,fidx],n_neighbors=5,init="spca") 
+dfy <- as.data.frame(umap_out)
+ggplot(dfy,  aes(x=V1, y=V2, color = aec$targets$age)) + geom_point(size=2.5) +
+  theme(text = element_text(size=14)) +
+  labs(color="Age") +
+  ggtitle("UMAP")
+set.seed(6548)
+umap_out <- uwot::umap(sdztE[,fidx],n_neighbors=5,init="spca") 
+dfy <- as.data.frame(umap_out)
+ggplot(dfy,  aes(x=V1, y=V2, color = aec$targets$age )) + geom_point(size=2.5) +
+  theme(text = element_text(size=14)) +
+  labs(color="Age") +
+  ggtitle("UMAP")
+set.seed(6548)
+umap_out1 <- uwot::umap(sdztE[,fidx],n_neighbors=4,init="spca") 
+umap_out1 <- cbind.data.frame(umap_out1, nneighbors="n_neighbors = 3")
+set.seed(6548)
+umap_out2 <- uwot::umap(sdztE[,fidx],n_neighbors=3,init="spca") 
+umap_out2 <- cbind.data.frame(umap_out2, nneighbors="n_neighbors = 7")
+dfy <- rbind.data.frame(rbind(umap_out1,umap_out2))
+colnames(dfy) <- c("V1","V2","nneighbors")
+ggplot(dfy, aes(x=V1, y=V2, 
+      color = c(aec$targets$age,aec$targets$age) ) ) + 
+        geom_point() + 
+        facet_wrap(~ nneighbors, ncol = 2, scales = "free") +
+        theme(legend.position = "bottom") +
+        labs(color="Age") +
+        ggtitle("UMAP")
+set.seed(6548)
+umap_out1 <- uwot::umap(sdztE[,fidx],n_neighbors=3,init="spca") 
+umap_out1 <- cbind.data.frame(umap_out1, seed="6548")
+set.seed(20)
+umap_out2 <- uwot::umap(sdztE[,fidx],n_neighbors=3,init="spca") 
+umap_out2 <- cbind.data.frame(umap_out2, seed="20")
+
+dfy <- rbind.data.frame(rbind(umap_out1,umap_out2))
+colnames(dfy) <- c("V1","V2","seed")
+
+ggplot(dfy, aes(x=V1, y=V2, 
+            color = c(aec$targets$age,aec$targets$age) ) ) + 
+        geom_point() + 
+        facet_wrap(~ seed, ncol = 2, scales = "free") +
+        theme(legend.position = "bottom") +
+        labs(color="Treatment") +
+        ggtitle("UMAP")
+```
 
 # Report computing environment
 
